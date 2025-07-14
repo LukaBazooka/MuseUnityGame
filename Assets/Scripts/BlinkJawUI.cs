@@ -14,6 +14,10 @@ public class BlinkJawUI : MonoBehaviour
     public Image topSquare;
     public Image bottomSquare;
 
+    [Header("Visual Settings")]
+    [Tooltip("How long the square colors stay visible (in seconds)")]
+    public float colorDisplayDuration = 0.5f;
+
     private void Start()
     {
         connectButton.onClick.AddListener(OnConnectClicked);
@@ -23,7 +27,7 @@ public class BlinkJawUI : MonoBehaviour
 
     private async void OnConnectClicked()
     {
-        statusText.text = "Connecting…";
+        statusText.text = "Connecting...";
         await MuseService.Instance.Connect();
         if (MuseService.Instance.IsConnected)
         {
@@ -48,12 +52,30 @@ public class BlinkJawUI : MonoBehaviour
 
     private void TearDownEventListeners()
     {
-        MuseService.Instance.OnBlink -= HandleBlink;
-        MuseService.Instance.OnJawClench -= HandleJawClench;
+        if (MuseService.Instance != null)
+        {
+            MuseService.Instance.OnBlink -= HandleBlink;
+            MuseService.Instance.OnJawClench -= HandleJawClench;
+        }
     }
 
-    private void HandleBlink() => topSquare.color = Color.red;
-    private void HandleJawClench() => bottomSquare.color = Color.blue;
+    private void HandleBlink() 
+    {
+        topSquare.color = Color.red;
+        StartCoroutine(ResetSquareColor(topSquare));
+    }
+    
+    private void HandleJawClench() 
+    {
+        bottomSquare.color = Color.blue;
+        StartCoroutine(ResetSquareColor(bottomSquare));
+    }
+
+    private IEnumerator ResetSquareColor(Image square)
+    {
+        yield return new WaitForSeconds(colorDisplayDuration);
+        square.color = Color.white;
+    }
 
     private void ConnectUI()
     {

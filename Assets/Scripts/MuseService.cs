@@ -1,7 +1,5 @@
 ﻿using UnityEngine;
-using Muse.Net;
-using Muse.Net.Enums;
-using Muse.Net.EventArgs;
+using Harthoorn.MuseClient;
 using System.Collections;
 using System.Collections.Generic;
 using System;
@@ -12,8 +10,8 @@ public class MuseService : MonoBehaviour
     public static MuseService Instance { get; private set; }
 
     [Header("Connection Settings")]
-    [Tooltip("The BLE name or address of your Muse 2 headset.")]
-    public string museDeviceName = "Muse-2";
+    [Tooltip("The BLE name or address of your Muse headset.")]
+    public string museDeviceName = "Muse-3D56";
 
     public bool IsConnected { get; private set; }
     public event Action OnBlink;
@@ -49,44 +47,63 @@ public class MuseService : MonoBehaviour
     {
         if (IsConnected) return;
 
-        client = new MuseClient(museDeviceName);
-        bool ok = await client.Connect();
-        if (!ok) { Debug.LogError("Failed to connect to Muse"); return; }
+        try
+        {
+            client = new MuseClient();
+            bool ok = await client.Connect();
+            if (!ok) { Debug.LogError("Failed to connect to Muse"); return; }
 
-        // Subscribe to the 4 EEG channels
-        await client.Subscribe(
-            Channel.EEG_AF7, Channel.EEG_AF8,
-            Channel.EEG_TP9, Channel.EEG_TP10
-        );
+            // Subscribe to the 4 EEG channels
+            await client.Subscribe(
+                Channel.EEG_AF7, Channel.EEG_AF8,
+                Channel.EEG_TP9, Channel.EEG_TP10
+            );
 
-        client.NotifyEeg += OnEegReceived;
-        await client.Resume();
+            client.NotifyEeg += OnEegReceived;
+            await client.Resume();
 
-        IsConnected = true;
-        Debug.Log("Muse connected and streaming");
-        // start the analysis loop
-        InvokeRepeating(nameof(AnalyzeBuffers), AnalysisInterval, AnalysisInterval);
+            IsConnected = true;
+            Debug.Log("Muse connected and streaming");
+            // start the analysis loop
+            InvokeRepeating(nameof(AnalyzeBuffers), AnalysisInterval, AnalysisInterval);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error connecting to Muse: {ex.Message}");
+            IsConnected = false;
+        }
     }
 
     public async Task Disconnect()
     {
         if (!IsConnected) return;
-        CancelInvoke(nameof(AnalyzeBuffers));
-        client.NotifyEeg -= OnEegReceived;
-        await client.Pause();
-        client.Disconnect();
-        IsConnected = false;
-        Debug.Log("Muse disconnected");
+        
+        try
+        {
+            CancelInvoke(nameof(AnalyzeBuffers));
+            if (client != null)
+            {
+                client.NotifyEeg -= OnEegReceived;
+                await client.Pause();
+                await client.Disconnect();
+            }
+            IsConnected = false;
+            Debug.Log("Muse disconnected");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error disconnecting from Muse: {ex.Message}");
+        }
     }
 
-    private void OnEegReceived(object sender, EegEventArgs e)
+    private void OnEegReceived(Channel channel, Encefalogram eeg)
     {
-        // e.Samples length is channel-specific; just take max abs
+        // eeg.Samples length is channel-specific; just take max abs
         float maxAmp = 0f;
-        foreach (var s in e.Samples) maxAmp = Mathf.Max(maxAmp, Mathf.Abs(s));
+        foreach (var s in eeg.Samples) maxAmp = Mathf.Max(maxAmp, Mathf.Abs(s));
 
         // Demultiplex: AF7/AF8 → eyeBuffer, TP9/TP10 → jawBuffer
-        if (e.Channel == Channel.EEG_AF7 || e.Channel == Channel.EEG_AF8)
+        if (channel == Channel.EEG_AF7 || channel == Channel.EEG_AF8)
             ShiftAndAppend(eyeBuffer, maxAmp);
         else
             ShiftAndAppend(jawBuffer, maxAmp);
