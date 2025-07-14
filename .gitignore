@@ -1,1 +1,45 @@
+# ========== Unity Generated ==========
+[Ll]ibrary/
+[Tt]emp/
+[Bb]uild/
+[Bb]uilds/
+[Bb]in/
+[Oo]bj/
+MemoryCaptures/
+Logs/
+
+# ========== Unity Cache ==========
+sysinfo.txt
+*.stacktrace
+
+# ========== VS / JetBrains / MonoDevelop ==========
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+
+# ========== OS Specific ==========
+.DS_Store
+Thumbs.db
+
+# ========== Rider ==========
+.idea/
+*.sln.iml
+
+# ========== Builds / Exports ==========
+*.apk
+*.aab
+*.unitypackage
+
+# ========== Crashlytics / Analytics ==========
+crashlytics-build.properties
+
 Muse.Net-master
